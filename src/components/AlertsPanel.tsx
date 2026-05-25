@@ -1,6 +1,6 @@
 import React from 'react';
 import { Employee, Delivery, StockItem, UniformGender } from '../types';
-import { ShieldAlert, Award, Calendar, RotateCcw, Check, CheckCircle } from 'lucide-react';
+import { ShieldAlert, Award, Calendar, RotateCcw, Check, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 
 interface AlertsPanelProps {
   employees: Employee[];
@@ -10,6 +10,7 @@ interface AlertsPanelProps {
   setDeliveries: React.Dispatch<React.SetStateAction<Delivery[]>>;
   currentSimulatedDate: string;
   onRefreshStats: () => void;
+  onSelectEmployeeToDeliver?: (empId: string) => void;
 }
 
 export default function AlertsPanel({
@@ -20,11 +21,12 @@ export default function AlertsPanel({
   setDeliveries,
   currentSimulatedDate,
   onRefreshStats,
+  onSelectEmployeeToDeliver,
 }: AlertsPanelProps) {
   const simulatedToday = new Date(currentSimulatedDate);
 
   // 1. Alert A: Probation Done (3 Months Completed, needs NEW uniform)
-  // Find employees who joined >= 90 days ago AND don't have any 'Novo' deliveries registered
+  // Find employees who joined >= 90 days ago AND don't have any 'Novo' deliveries registered, AND have actually received SOMETHING (otherwise they are PENDENTE)
   const probationAlertsList = employees
     .map((emp) => {
       const joinDate = new Date(emp.dataAdmissao);
@@ -34,8 +36,10 @@ export default function AlertsPanel({
 
       // Has received 'Novo' uniform?
       const receivedNew = deliveries.some((d) => d.funcionarioId === emp.id && d.condicao === 'Novo');
+      // Has received ANY farda in history?
+      const hasAnyDelivery = deliveries.some((d) => d.funcionarioId === emp.id);
       const isIntern = emp.cargo === 'Estagiário';
-      const isEligible = diffDays >= 90 && !receivedNew && !isIntern;
+      const isEligible = diffDays >= 90 && hasAnyDelivery && !receivedNew && !isIntern && !emp.deleted;
 
       return {
         employee: emp,
@@ -45,6 +49,24 @@ export default function AlertsPanel({
       };
     })
     .filter((v) => v.isEligible);
+
+  // 1.5. Alert C: Pending Initial Uniform Rental/Withdrawal (PENDENTE de fardamento inicial)
+  // Employees who have literally 0 deliveries registered.
+  const pendingAlertsList = employees
+    .filter((emp) => {
+      if (emp.deleted) return false;
+      const hasAnyDelivery = deliveries.some((d) => d.funcionarioId === emp.id);
+      return !hasAnyDelivery;
+    })
+    .map((emp) => {
+      const joinDate = new Date(emp.dataAdmissao);
+      const diffTime = simulatedToday.getTime() - joinDate.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      return {
+        employee: emp,
+        days: diffDays,
+      };
+    });
 
   // 2. Alert B: Annual Renewal (1 Year completed with a NEW piece)
   // For each employee, look at the last "Novo" delivery date for EACH piece they received.
@@ -200,20 +222,77 @@ export default function AlertsPanel({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Probation Alerts */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Pending Initial Deliveries (Status PENDENTE) */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md space-y-4">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
               <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+                RETIRADAS PENDENTES (STATUS PENDENTE)
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Colaboradores cadastrados que ainda não receberam fardas no histórico.
+              </p>
+            </div>
+            <span className="px-2.5 py-1 text-xs font-mono font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              {pendingAlertsList.length} pendentes
+            </span>
+          </div>
+
+          {pendingAlertsList.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 bg-slate-850/30 rounded-xl border border-slate-850 text-center space-y-2">
+              <CheckCircle className="h-8 w-8 text-teal-500" />
+              <p className="text-xs text-slate-400 font-mono">Nenhum colaborador com entrega inicial pendente.</p>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+              {pendingAlertsList.map(({ employee, days }) => (
+                <div
+                  key={employee.id}
+                  className="bg-slate-850 border border-slate-800 rounded-lg p-4 flex flex-col justify-between gap-3 hover:border-slate-700 transition"
+                >
+                  <div className="space-y-1">
+                    <div className="font-bold text-white text-sm">{employee.nome}</div>
+                    <div className="text-xs text-slate-400 font-mono">
+                      Setor: {employee.setor} | CPF: {employee.cpf}
+                    </div>
+                    <div className="text-xs text-amber-400 font-mono flex items-start gap-1.5 pt-1">
+                      <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                      <span>Colaborador <strong>{employee.nome}</strong> está pendente de retirada de uniforme.</span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-mono">
+                      Cadastro efetuado há {days} dias
+                    </div>
+                  </div>
+
+                  {onSelectEmployeeToDeliver && (
+                    <button
+                      onClick={() => onSelectEmployeeToDeliver(employee.id)}
+                      className="w-full px-3 py-1.5 font-sans font-bold text-xs bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-all shadow shadow-amber-600/10 cursor-pointer text-center"
+                    >
+                      Registrar Primeira Entrega
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Probation Alerts */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h3 className="text-sm font-bold text-white font-mono flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
                 EFETIVAÇÃO DE CONTRATO (3 MESES)
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
                 Venceram o período de teste e precisam receber kits de uniformes NOVOS.
               </p>
             </div>
-            <span className="px-2.5 py-1 text-xs font-mono font-bold rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <span className="px-2.5 py-1 text-xs font-mono font-bold rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               {probationAlertsList.length} ativos
             </span>
           </div>
@@ -228,11 +307,11 @@ export default function AlertsPanel({
               {probationAlertsList.map(({ employee, months, days }) => (
                 <div
                   key={employee.id}
-                  className="bg-slate-850 border border-slate-800 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition"
+                  className="bg-slate-850 border border-slate-800 rounded-lg p-4 flex flex-col justify-between gap-3 hover:border-slate-700 transition"
                 >
                   <div className="space-y-1">
                     <div className="font-bold text-white text-sm">{employee.nome}</div>
-                    <div className="text-xs text-slate-404 font-mono">
+                    <div className="text-xs text-slate-400 font-mono">
                       Setor: {employee.setor} | CPF: {employee.cpf}
                     </div>
                     <div className="flex items-center gap-1.5 text-xs text-amber-400 font-mono pt-1">
@@ -243,7 +322,7 @@ export default function AlertsPanel({
 
                   <button
                     onClick={() => handleResolveEfetivacao(employee.id)}
-                    className="w-full sm:w-auto px-3.5 py-2 font-sans font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all shadow shadow-indigo-600/10 cursor-pointer text-center"
+                    className="w-full px-3.5 py-1.5 font-sans font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all shadow shadow-indigo-600/10 cursor-pointer text-center"
                   >
                     Entregar Kit Novo
                   </button>
@@ -280,11 +359,11 @@ export default function AlertsPanel({
               {renewalAlertsList.map((alertItem) => (
                 <div
                   key={alertItem.id}
-                  className="bg-slate-850 border border-slate-800 rounded-lg p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:border-slate-700 transition"
+                  className="bg-slate-850 border border-slate-800 rounded-lg p-4 flex flex-col justify-between gap-3 hover:border-slate-700 transition"
                 >
                   <div className="space-y-1">
                     <div className="font-bold text-white text-sm">{alertItem.employee.nome}</div>
-                    <div className="text-xs text-slate-404 font-mono">
+                    <div className="text-xs text-slate-400 font-mono">
                       Setor: {alertItem.employee.setor} | CPF: {alertItem.employee.cpf}
                     </div>
                     <div className="flex flex-wrap gap-2 pt-1 font-mono text-[10px] sm:text-xs">
@@ -296,14 +375,14 @@ export default function AlertsPanel({
                         Último fornecimento: {new Date(alertItem.dataEntrega + 'T00:00:00').toLocaleDateString('pt-BR')}
                       </span>
                     </div>
-                    <div className="text-xs text-red-400 font-mono font-semibold pt-1">
+                    <div className="text-xs text-red-500 font-mono font-semibold pt-1">
                       Tempo de posse: {alertItem.daysActive} dias (Vencido há {alertItem.daysActive - 365} dias)
                     </div>
                   </div>
 
                   <button
                     onClick={() => handleResolveReplacement(alertItem)}
-                    className="w-full sm:w-auto px-3.5 py-2 font-sans font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all shadow shadow-indigo-600/10 cursor-pointer text-center whitespace-nowrap"
+                    className="w-full px-3 py-1.5 font-sans font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all shadow shadow-indigo-600/10 cursor-pointer text-center whitespace-nowrap"
                   >
                     Renovar Peça
                   </button>

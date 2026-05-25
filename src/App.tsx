@@ -358,6 +358,11 @@ export default function App() {
               setDeliveries={setDeliveries}
               currentSimulatedDate={currentSimulatedDate}
               onRefreshStats={() => setGlobalLog('Transação registrada. Alertas reavaliados.')}
+              onSelectEmployeeToDeliver={(empId) => {
+                setPreselectedEmpId(empId);
+                setActiveTab('delivery');
+                setGlobalLog(`Direcionado para Registrar Entrega para o colaborador pendente.`);
+              }}
             />
           )}
 

@@ -493,6 +493,7 @@ export default function EmployeePanel({
                   {employees.filter(emp => !emp.deleted).map((emp) => {
                     const { days, months } = calculateContractTime(emp.dataAdmissao);
                     const isProbation = days < 90;
+                    const isPendingInitial = !deliveries.some((d) => d.funcionarioId === emp.id);
 
                     return (
                       <tr key={emp.id} className="hover:bg-slate-800/40 transition-all select-none">
@@ -503,20 +504,25 @@ export default function EmployeePanel({
                           </div>
                         </td>
                         <td className="py-3 font-mono text-xs text-slate-300">
-                          {emp.cpf}
+                           {emp.cpf}
                         </td>
                         <td className="py-3 font-mono text-xs text-slate-400">
                           {new Date(emp.dataAdmissao + 'T00:00:00').toLocaleDateString('pt-BR')}
                         </td>
                         <td className="py-3 text-center">
-                          {emp.cargo === 'Estagiário' ? (
+                          {isPendingInitial ? (
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded text-amber-450 bg-amber-500/10 border border-amber-500/15 animate-pulse">
+                              <ShieldAlert className="h-3 w-3 text-amber-500" />
+                              PENDENTE
+                            </span>
+                          ) : emp.cargo === 'Estagiário' ? (
                             <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded text-teal-400 bg-teal-500/10 border border-teal-500/15">
                               <Award className="h-3 w-3" />
                               Estagiário (Novos)
                             </span>
                           ) : isProbation ? (
                             <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded text-amber-400 bg-amber-500/10 border border-amber-500/15">
-                              <ShieldAlert className="h-3 w-3" />
+                              <ShieldAlert className="h-3 w-3 animate-pulse" />
                               Experiência ({months}m)
                             </span>
                           ) : (
@@ -543,7 +549,7 @@ export default function EmployeePanel({
                                 onClick={() => handleRemoveEmployee(emp.id, emp.nome)}
                                 id={`btn-del-${emp.id}`}
                                 title={`Demitir / Remover ${emp.nome}`}
-                                className="p-1 px-2 rounded text-xs font-mono font-bold text-rose-400 hover:text-rose-350 bg-rose-500/10 hover:bg-rose-505/15 border border-rose-500/20 hover:border-rose-500/40 cursor-pointer inline-flex items-center gap-1"
+                                className="p-1 px-2 rounded text-xs font-mono font-bold text-rose-450 hover:text-rose-350 bg-rose-500/10 hover:bg-rose-505/15 border border-rose-500/20 hover:border-rose-500/40 cursor-pointer inline-flex items-center gap-1"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                                 Excluir

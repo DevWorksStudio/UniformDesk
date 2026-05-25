@@ -218,12 +218,17 @@ export default function EmployeeSpreadsheet({
                 let isAlerting = false;
                 let alertReason = '';
 
+                const isPendingInitial = !deliveries.some((d) => d.funcionarioId === emp.id);
+
                 // If probation is over (>= 3 months) but never received a "Novo" item, alert efetivacao is due.
                 const isIntern = emp.cargo === 'Estagiário';
                 const forcesUsedUniform = isProbation && !isIntern;
 
                 const hasReceivedNewItem = deliveries.some((d) => d.funcionarioId === emp.id && d.condicao === 'Novo');
-                if (!forcesUsedUniform && !hasReceivedNewItem) {
+                if (isPendingInitial) {
+                  isAlerting = true;
+                  alertReason = 'Aguardando entrega inicial de uniforme';
+                } else if (!forcesUsedUniform && !hasReceivedNewItem) {
                   isAlerting = true;
                   alertReason = 'Prazo de Experiência Vencido (Requer Kit Novo)';
                 }
@@ -286,6 +291,11 @@ export default function EmployeeSpreadsheet({
                             </span>
                           )}
                         </div>
+                      ) : isPendingInitial ? (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-1 rounded-full text-amber-550 bg-amber-500/10 border border-amber-500/25 uppercase animate-pulse">
+                          <Clock className="h-3 w-3" />
+                          PENDENTE
+                        </span>
                       ) : emp.cargo === 'Estagiário' ? (
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-1 rounded-full text-teal-400 bg-teal-500/10 border border-teal-500/20">
                           <Award className="h-3 w-3" />
@@ -341,11 +351,21 @@ export default function EmployeeSpreadsheet({
                         <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2.5 py-1 rounded text-slate-500 bg-slate-950/45 border border-slate-800">
                           HISTÓRICO ARQUIVADO
                         </span>
+                      ) : isPendingInitial ? (
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2.5 py-1 rounded text-amber-500 bg-amber-500/10 border border-amber-500/25 uppercase tracking-wide animate-pulse">
+                            <Clock className="h-3.5 w-3.5 mr-0.5" />
+                            PENDENTE GERAL
+                          </span>
+                          <p className="text-[11px] text-amber-400 max-w-xs leading-tight font-sans font-bold">
+                            Aguardando retirada de fardamento inicial completo (Camiseta, Bermuda, Calça)
+                          </p>
+                        </div>
                       ) : hasMissingGarments ? (
                         <div className="space-y-1">
                           <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2.5 py-1 rounded text-amber-500 bg-amber-500/10 border border-amber-500/20 uppercase tracking-wide">
                             <Clock className="h-3.5 w-3.5 mr-0.5" />
-                            Pendente
+                            PENDENTE PARCIAL
                           </span>
                           <p className="text-[11px] text-amber-400 max-w-xs leading-tight font-sans">
                             Aguardando fardamento: {missingGarments.join(', ')}
