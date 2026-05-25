@@ -77,6 +77,8 @@ export default function DeliveryForm({
         (1000 * 60 * 60 * 24) <
       90
     : false;
+  const isIntern = selectedEmployee?.cargo === 'Estagiário';
+  const forcesUsedUniform = isProbation && !isIntern;
 
   // Filter employees matching search term
   const filteredEmployees = employees.filter((emp) => {
@@ -99,9 +101,9 @@ export default function DeliveryForm({
     setLogError('');
     setLogSuccess('');
     if (selectedEmployee) {
-      setAddCondition(isProbation ? 'Usado' : 'Novo');
+      setAddCondition(forcesUsedUniform ? 'Usado' : 'Novo');
     }
-  }, [selectedEmpId, isProbation]);
+  }, [selectedEmpId, forcesUsedUniform]);
 
   // Helper to query live stock balance
   const getStockQty = (type: UniformType, size: string, condition: UniformCondition, gender: UniformGender): number => {
@@ -173,8 +175,8 @@ export default function DeliveryForm({
       return;
     }
 
-    // Business Rule checks: Probation implies only USADO
-    if (isProbation && addCondition === 'Novo') {
+    // Business Rule checks: Probation implies only USADO (except for Estagiários)
+    if (forcesUsedUniform && addCondition === 'Novo') {
       setLogError(`Regra Bloqueada: O colaborador ${selectedEmployee.nome} está no Período de Experiência (menor que 90 dias) e deve obrigatoriamente receber fardamento USADO.`);
       return;
     }
@@ -329,6 +331,7 @@ export default function DeliveryForm({
                       (new Date(currentSimulatedDate).getTime() - new Date(emp.dataAdmissao).getTime()) /
                         (1000 * 60 * 60 * 24) <
                       90;
+                    const isEmpIntern = emp.cargo === 'Estagiário';
                     const isSelected = emp.id === selectedEmpId;
 
                     return (
@@ -353,7 +356,11 @@ export default function DeliveryForm({
                           </span>
                         </div>
                         <div className="shrink-0 text-right">
-                          {isEmpProbation ? (
+                          {isEmpIntern ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] bg-teal-500/15 text-teal-400 border border-teal-500/20 uppercase font-bold">
+                              Estagiário
+                            </span>
+                          ) : isEmpProbation ? (
                             <span className="px-2 py-0.5 rounded text-[10px] bg-amber-500/15 text-amber-500 border border-amber-500/20 uppercase font-bold">
                               Experiência
                             </span>
@@ -633,7 +640,7 @@ export default function DeliveryForm({
             <div className="space-y-3.5 text-xs leading-relaxed text-slate-400">
               <div className="flex gap-2.5 items-start">
                 <div className={`h-4.5 w-4.5 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-mono font-bold ${
-                  selectedEmployee && isProbation
+                  selectedEmployee && forcesUsedUniform
                     ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                     : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                 }`}>
@@ -641,12 +648,18 @@ export default function DeliveryForm({
                 </div>
                 <div>
                   <span className="text-white block font-semibold">Período de Experiência (3 meses)</span>
-                  {selectedEmployee && isProbation ? (
+                  {selectedEmployee && isIntern ? (
+                    <span className="text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded font-mono font-bold block mt-1">
+                      Isento (Estagiário): Elegível para uniformes novos!
+                    </span>
+                  ) : selectedEmployee && forcesUsedUniform ? (
                     <span className="text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold block mt-1">
                       Ativo para {selectedEmployee.nome}. Somente entrega Usados!
                     </span>
-                  ) : (
+                  ) : selectedEmployee ? (
                     <span>Colaborador já ultrapassou o período de 3 meses. Habilitado para uniformes novos!</span>
+                  ) : (
+                    <span>Verificação do tempo de contratação para liberação do kit novo.</span>
                   )}
                 </div>
               </div>

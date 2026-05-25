@@ -144,6 +144,7 @@ export default function BackupPanel({
           'CPF': '000.111.222-33',
           'Data de Admissão': '2026-05-22',
           'Setor': 'Logística',
+          'Cargo': 'CLT',
           'Peça Entregue': '',
           'Quantidade': '',
           'Tamanho': '',
@@ -160,6 +161,7 @@ export default function BackupPanel({
               'CPF': emp.cpf,
               'Data de Admissão': emp.dataAdmissao,
               'Setor': emp.setor,
+              'Cargo': emp.cargo || 'CLT',
               'Peça Entregue': '',
               'Quantidade': '',
               'Tamanho': '',
@@ -173,6 +175,7 @@ export default function BackupPanel({
                 'CPF': emp.cpf,
                 'Data de Admissão': emp.dataAdmissao,
                 'Setor': emp.setor,
+                'Cargo': emp.cargo || 'CLT',
                 'Peça Entregue': del.itemType,
                 'Quantidade': del.quantidade || 1,
                 'Tamanho': del.tamanho,
@@ -230,6 +233,7 @@ export default function BackupPanel({
           CPF: '123.456.789-01',
           'Data de Admissão': '2026-02-15',
           Setor: 'Logística',
+          Cargo: 'CLT',
           'Peça Entregue': 'Camiseta',
           Quantidade: 1,
           Tamanho: 'G',
@@ -241,6 +245,7 @@ export default function BackupPanel({
           CPF: '123.456.789-01',
           'Data de Admissão': '2026-02-15',
           Setor: 'Logística',
+          Cargo: 'CLT',
           'Peça Entregue': 'Bermuda',
           Quantidade: 1,
           Tamanho: 'M',
@@ -252,6 +257,7 @@ export default function BackupPanel({
           CPF: '555.666.777-88',
           'Data de Admissão': '2025-05-15',
           Setor: 'Expedição',
+          Cargo: 'CLT',
           'Peça Entregue': '',
           Quantidade: '',
           Tamanho: '',
@@ -341,7 +347,7 @@ export default function BackupPanel({
         const newSectorsList: string[] = [];
 
         // In-memory dictionaries to trace unique key constraint breaches (CPF)
-        const processedCPFs = new Map<string, { id: string; nome: string; dataAdmissao: string; setor: string }>();
+        const processedCPFs = new Map<string, { id: string; nome: string; dataAdmissao: string; setor: string; cargo: string }>();
         const parsedEmployeesList: any[] = [];
         const parsedDeliveriesList: any[] = [];
 
@@ -351,7 +357,8 @@ export default function BackupPanel({
             id: emp.id,
             nome: emp.nome,
             dataAdmissao: emp.dataAdmissao,
-            setor: emp.setor
+            setor: emp.setor,
+            cargo: emp.cargo || 'CLT'
           });
         });
 
@@ -360,6 +367,8 @@ export default function BackupPanel({
           const rawNome = row['Nome'] || row['nome'];
           const rawCPF = row['CPF'] || row['cpf'];
           const rawDate = row['Data de Admissao'] || row['data_admissao'] || row['Data de Admissão'] || row['data_admissao_inicial'];
+          const rawCargo = row['Cargo'] || row['cargo'] || row['Vínculo'] || row['vinculo'] || row['Vínculo / Cargo'] || row['Cargo / Vínculo'];
+          const resolvedCargo = rawCargo ? String(rawCargo).trim() : 'CLT';
 
           if (!rawNome || !rawCPF) {
             // Unidentifiable row, ignore
@@ -393,14 +402,15 @@ export default function BackupPanel({
             empId = existing.id;
             
             // Check if updates are needed (different name, admission or sector)
-            if (existing.nome !== String(rawNome).trim() || existing.dataAdmissao !== parsedAdmission || existing.setor !== resolvedSetor) {
+            if (existing.nome !== String(rawNome).trim() || existing.dataAdmissao !== parsedAdmission || existing.setor !== resolvedSetor || existing.cargo !== resolvedCargo) {
               empsToUpdate++;
               // update local dryrun dict
               processedCPFs.set(cpfClean, {
                 id: empId,
                 nome: String(rawNome).trim(),
                 dataAdmissao: parsedAdmission,
-                setor: resolvedSetor
+                setor: resolvedSetor,
+                cargo: resolvedCargo
               });
             }
           } else {
@@ -411,7 +421,8 @@ export default function BackupPanel({
               id: empId,
               nome: String(rawNome).trim(),
               dataAdmissao: parsedAdmission,
-              setor: resolvedSetor
+              setor: resolvedSetor,
+              cargo: resolvedCargo
             });
           }
 
@@ -423,7 +434,8 @@ export default function BackupPanel({
               nome: String(rawNome).trim(),
               cpf: formattedCPF,
               dataAdmissao: parsedAdmission,
-              setor: resolvedSetor
+              setor: resolvedSetor,
+              cargo: resolvedCargo
             });
           }
 

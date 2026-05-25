@@ -57,13 +57,24 @@ export default function EmployeeSpreadsheet({
     // Status filter match
     let matchesStatus = true;
     if (filterStatus === 'Experiencia') {
-      matchesStatus = isProbation;
+      const isIntern = emp.cargo === 'Estagiário';
+      matchesStatus = isProbation && !isIntern;
     } else if (filterStatus === 'Efetivados') {
-      matchesStatus = !isProbation;
+      const isIntern = emp.cargo === 'Estagiário';
+      matchesStatus = !isProbation || isIntern;
     } else if (filterStatus === 'Atrasados') {
+      const isIntern = emp.cargo === 'Estagiário';
+      const forcesUsedUniform = isProbation && !isIntern;
+
+      // Check for missing pieces
+      const camiseta = getLatestDelivery(emp.id, 'Camiseta');
+      const bermuda = getLatestDelivery(emp.id, 'Bermuda');
+      const calca = getLatestDelivery(emp.id, 'Calça');
+      const hasMissingGarments = !camiseta || !bermuda || !calca;
+
       // Check if they need replacement ( Novo >1 year, or >90 days and no Novo pieces at all)
       const hasNew = deliveries.some((d) => d.funcionarioId === emp.id && d.condicao === 'Novo');
-      const probationOverAndNoNew = !isProbation && !hasNew;
+      const probationOverAndNoNew = !forcesUsedUniform && !hasNew;
 
       // Check if has any active Novo piece > 365 days
       const categories: ('Camiseta' | 'Bermuda' | 'Calça')[] = ['Camiseta', 'Bermuda', 'Calça'];
@@ -76,7 +87,7 @@ export default function EmployeeSpreadsheet({
         return false;
       });
 
-      matchesStatus = probationOverAndNoNew || hasOverduePiece;
+      matchesStatus = hasMissingGarments || probationOverAndNoNew || hasOverduePiece;
     }
 
     return matchesSearch && matchesStatus;
@@ -208,8 +219,11 @@ export default function EmployeeSpreadsheet({
                 let alertReason = '';
 
                 // If probation is over (>= 3 months) but never received a "Novo" item, alert efetivacao is due.
+                const isIntern = emp.cargo === 'Estagiário';
+                const forcesUsedUniform = isProbation && !isIntern;
+
                 const hasReceivedNewItem = deliveries.some((d) => d.funcionarioId === emp.id && d.condicao === 'Novo');
-                if (!isProbation && !hasReceivedNewItem) {
+                if (!forcesUsedUniform && !hasReceivedNewItem) {
                   isAlerting = true;
                   alertReason = 'Prazo de Experiência Vencido (Requer Kit Novo)';
                 }
@@ -229,6 +243,13 @@ export default function EmployeeSpreadsheet({
                 if (overdueGarments.length > 0) {
                   alertReason = `Troca Anual Vencida: ${overdueGarments.join(', ')}`;
                 }
+
+                // Check for missing/pending garments (strictly require history delivery)
+                const missingGarments: string[] = [];
+                if (!camiseta) missingGarments.push('Camiseta');
+                if (!bermuda) missingGarments.push('Bermuda');
+                if (!calca) missingGarments.push('Calça');
+                const hasMissingGarments = missingGarments.length > 0;
 
                 return (
                   <tr key={emp.id} className="hover:bg-slate-850/40 transition-colors">
@@ -265,6 +286,11 @@ export default function EmployeeSpreadsheet({
                             </span>
                           )}
                         </div>
+                      ) : emp.cargo === 'Estagiário' ? (
+                        <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-1 rounded-full text-teal-400 bg-teal-500/10 border border-teal-500/20">
+                          <Award className="h-3 w-3" />
+                          Estagiário (Novos)
+                        </span>
                       ) : isProbation ? (
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-1 rounded-full text-amber-400 bg-amber-500/10 border border-amber-500/20">
                           <Clock className="h-3 w-3" />
@@ -315,6 +341,16 @@ export default function EmployeeSpreadsheet({
                         <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2.5 py-1 rounded text-slate-500 bg-slate-950/45 border border-slate-800">
                           HISTÓRICO ARQUIVADO
                         </span>
+                      ) : hasMissingGarments ? (
+                        <div className="space-y-1">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2.5 py-1 rounded text-amber-500 bg-amber-500/10 border border-amber-500/20 uppercase tracking-wide">
+                            <Clock className="h-3.5 w-3.5 mr-0.5" />
+                            Pendente
+                          </span>
+                          <p className="text-[11px] text-amber-400 max-w-xs leading-tight font-sans">
+                            Aguardando fardamento: {missingGarments.join(', ')}
+                          </p>
+                        </div>
                       ) : isAlerting ? (
                         <div className="space-y-1">
                           <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2.5 py-1 rounded text-red-400 bg-red-500/10 border border-red-500/20 uppercase tracking-wide">

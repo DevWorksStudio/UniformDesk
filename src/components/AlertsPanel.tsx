@@ -34,7 +34,8 @@ export default function AlertsPanel({
 
       // Has received 'Novo' uniform?
       const receivedNew = deliveries.some((d) => d.funcionarioId === emp.id && d.condicao === 'Novo');
-      const isEligible = diffDays >= 90 && !receivedNew;
+      const isIntern = emp.cargo === 'Estagiário';
+      const isEligible = diffDays >= 90 && !receivedNew && !isIntern;
 
       return {
         employee: emp,

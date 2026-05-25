@@ -32,6 +32,7 @@ export default function EmployeePanel({
   const [newCPF, setNewCPF] = useState('');
   const [newSetor, setNewSetor] = useState('Logística');
   const [newDataAdmissao, setNewDataAdmissao] = useState('2026-05-22');
+  const [newCargo, setNewCargo] = useState('CLT');
   
   // Edit mode states
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -114,6 +115,7 @@ export default function EmployeePanel({
     setNewCPF('');
     setNewSetor(sectors[0] || '');
     setNewDataAdmissao(currentSimulatedDate);
+    setNewCargo('CLT');
     setEditingId(null);
   };
 
@@ -124,6 +126,7 @@ export default function EmployeePanel({
     setNewCPF(emp.cpf);
     setNewSetor(emp.setor);
     setNewDataAdmissao(emp.dataAdmissao);
+    setNewCargo(emp.cargo || 'CLT');
     setLogMsg(`Modo Edição ativado para o colaborador: ${emp.nome}`);
   };
 
@@ -169,6 +172,7 @@ export default function EmployeePanel({
                 cpf: newCPF,
                 setor: newSetor,
                 dataAdmissao: newDataAdmissao,
+                cargo: newCargo,
               }
             : emp
         )
@@ -183,6 +187,7 @@ export default function EmployeePanel({
         setor: newSetor,
         cpf: newCPF,
         dataAdmissao: newDataAdmissao,
+        cargo: newCargo,
       };
 
       setEmployees((prev) => [...prev, newEmp]);
@@ -504,13 +509,18 @@ export default function EmployeePanel({
                           {new Date(emp.dataAdmissao + 'T00:00:00').toLocaleDateString('pt-BR')}
                         </td>
                         <td className="py-3 text-center">
-                          {isProbation ? (
+                          {emp.cargo === 'Estagiário' ? (
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded text-teal-400 bg-teal-500/10 border border-teal-500/15">
+                              <Award className="h-3 w-3" />
+                              Estagiário (Novos)
+                            </span>
+                          ) : isProbation ? (
                             <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded text-amber-400 bg-amber-500/10 border border-amber-500/15">
                               <ShieldAlert className="h-3 w-3" />
                               Experiência ({months}m)
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded text-emerald-400 bg-emerald-505/10 border border-emerald-500/15">
+                            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded text-emerald-400 bg-emerald-500/10 border border-emerald-500/15">
                               <Award className="h-3 w-3" />
                               CLT Efetivo ({months}m)
                             </span>
@@ -637,18 +647,32 @@ export default function EmployeePanel({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-slate-400 mb-1.5 uppercase tracking-wide flex items-center gap-1.5 font-mono font-bold">
-                  <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                  Data de Admissão
-                </label>
-                <input
-                  type="date"
-                  value={newDataAdmissao}
-                  onChange={(e) => setNewDataAdmissao(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm font-mono"
-                  required
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-400 mb-1.5 uppercase tracking-wide flex items-center gap-1.5 font-mono font-bold">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                    Data de Admissão
+                  </label>
+                  <input
+                    type="date"
+                    value={newDataAdmissao}
+                    onChange={(e) => setNewDataAdmissao(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm font-mono"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1.5 uppercase tracking-wide font-mono font-bold">Cargo / Vínculo</label>
+                  <select
+                    value={newCargo}
+                    onChange={(e) => setNewCargo(e.target.value)}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500 text-sm font-sans"
+                  >
+                    <option value="CLT" className="bg-slate-900 text-white">CLT (Normal)</option>
+                    <option value="Estagiário" className="bg-slate-900 text-white">Estagiário</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex gap-2 pt-2">

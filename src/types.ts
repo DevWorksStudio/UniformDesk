@@ -38,6 +38,7 @@ export interface Employee {
   dataAdmissao: string; // ISO yyyy-mm-dd
   deleted?: boolean;
   dataDemissao?: string; // ISO yyyy-mm-dd
+  cargo?: string;
 }
 
 export interface Delivery {
