@@ -512,13 +512,11 @@ export default function BackupPanel({
               const qtyRaw = row['Quantidade Atual Real'] || row['Quantidade_Atual_Real'] || row['quantidade'] || row['Quantidade'] || row['Qtd'] || row['qtd'] || row['Quantidade Atual'] || row['quantidade_estoque'];
 
               if (itemTypeRaw && String(itemTypeRaw).trim()) {
-                let itemType: 'Camiseta' | 'Bermuda' | 'Calça' | 'Camiseta Polo' | 'Botina' = 'Camiseta';
+                let itemType: 'Camiseta' | 'Bermuda' | 'Calça' | 'Camiseta Polo' = 'Camiseta';
                 const normType = String(itemTypeRaw).trim().toLowerCase();
                 
                 if (normType === 'camiseta polo' || normType === 'camisatapolo') {
                   itemType = 'Camiseta Polo';
-                } else if (normType === 'botina') {
-                  itemType = 'Botina';
                 } else if (normType === 'camiseta') {
                   itemType = 'Camiseta';
                 } else if (normType === 'bermuda') {

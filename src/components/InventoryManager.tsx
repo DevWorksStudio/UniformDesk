@@ -51,9 +51,6 @@ export default function InventoryManager({
 
   // Dynamic sizes helper based on business rules
   const getSizesForType = (itemType: UniformType): string[] => {
-    if (itemType === 'Botina') {
-      return ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44'];
-    }
     return ['PP', 'P', 'M', 'G', 'GG', 'EG', 'EXG'];
   };
 
@@ -297,7 +294,6 @@ export default function InventoryManager({
                 <option value="Bermuda">Bermuda</option>
                 <option value="Calça">Calça</option>
                 <option value="Camiseta Polo">Camiseta Polo</option>
-                <option value="Botina">Botina</option>
               </select>
             </div>
 
@@ -495,7 +491,6 @@ export default function InventoryManager({
               <option value="Bermuda">Bermuda</option>
               <option value="Calça">Calça</option>
               <option value="Camiseta Polo">Camiseta Polo</option>
-              <option value="Botina">Botina</option>
             </select>
 
             {/* Movement reason filter */}

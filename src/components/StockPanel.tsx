@@ -55,9 +55,6 @@ export default function StockPanel({ stock, setStock, onReset }: StockPanelProps
   const [logMsg, setLogMsg] = useState<string>('');
 
   const getSizesForType = (itemType: UniformType): string[] => {
-    if (itemType === 'Botina') {
-      return ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44'];
-    }
     return ['PP', 'P', 'M', 'G', 'GG', 'EG', 'EXG'];
   };
 
@@ -211,7 +208,6 @@ export default function StockPanel({ stock, setStock, onReset }: StockPanelProps
                 <option value="Bermuda" className="bg-slate-900 text-white">Bermuda</option>
                 <option value="Calça" className="bg-slate-900 text-white">Calça</option>
                 <option value="Camiseta Polo" className="bg-slate-900 text-white">Camiseta Polo</option>
-                <option value="Botina" className="bg-slate-900 text-white">Botina</option>
               </select>
 
               <select
@@ -399,7 +395,6 @@ export default function StockPanel({ stock, setStock, onReset }: StockPanelProps
                   <option value="Bermuda" className="bg-slate-900 text-white">Bermuda</option>
                   <option value="Calça" className="bg-slate-900 text-white">Calça</option>
                   <option value="Camiseta Polo" className="bg-slate-900 text-white">Camiseta Polo</option>
-                  <option value="Botina" className="bg-slate-900 text-white">Botina</option>
                 </select>
               </div>
 

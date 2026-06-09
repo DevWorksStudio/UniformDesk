@@ -1,4 +1,4 @@
-export type UniformType = 'Camiseta' | 'Bermuda' | 'Calça' | 'Camiseta Polo' | 'Botina';
+export type UniformType = 'Camiseta' | 'Bermuda' | 'Calça' | 'Camiseta Polo';
 export type UniformCondition = 'Novo' | 'Usado';
 export type UniformGender = 'Masculino' | 'Feminino';
 

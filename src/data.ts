@@ -27,7 +27,7 @@ export const SCHEMAS_DDL: TableSchema[] = [
     description: 'Tabela catálogo de peças disponíveis para o uniforme.',
     columns: [
       { name: 'id', type: 'INT', constraints: 'PRIMARY KEY IDENTITY(1,1)', description: 'Chave primária.' },
-      { name: 'nome', type: 'VARCHAR(50)', constraints: 'UNIQUE NOT NULL', description: 'Nome do item (ex: Camiseta, Bermuda, Calça, Camiseta Polo, Botina).' },
+      { name: 'nome', type: 'VARCHAR(50)', constraints: 'UNIQUE NOT NULL', description: 'Nome do item (ex: Camiseta, Bermuda, Calça, Camiseta Polo).' },
     ]
   },
   {

@@ -304,7 +304,7 @@ export default function EmployeeSpreadsheet({
                       ) : isProbation ? (
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-1 rounded-full text-amber-400 bg-amber-500/10 border border-amber-500/20">
                           <Clock className="h-3 w-3" />
-                          Experiência (Usados)
+                          Experiência
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2 py-1 rounded-full text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">

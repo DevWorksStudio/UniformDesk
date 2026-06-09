@@ -72,13 +72,6 @@ export default function DeliveryForm({
 
   // Selected employee metadata
   const selectedEmployee = employees.find((e) => e.id === selectedEmpId);
-  const isProbation = selectedEmployee
-    ? (new Date(currentSimulatedDate).getTime() - new Date(selectedEmployee.dataAdmissao).getTime()) /
-        (1000 * 60 * 60 * 24) <
-      90
-    : false;
-  const isIntern = selectedEmployee?.cargo === 'Estagiário';
-  const forcesUsedUniform = isProbation && !isIntern;
 
   // Filter employees matching search term
   const filteredEmployees = employees.filter((emp) => {
@@ -101,9 +94,9 @@ export default function DeliveryForm({
     setLogError('');
     setLogSuccess('');
     if (selectedEmployee) {
-      setAddCondition(forcesUsedUniform ? 'Usado' : 'Novo');
+      setAddCondition('Novo');
     }
-  }, [selectedEmpId, forcesUsedUniform]);
+  }, [selectedEmpId]);
 
   // Helper to query live stock balance
   const getStockQty = (type: UniformType, size: string, condition: UniformCondition, gender: UniformGender): number => {
@@ -119,19 +112,12 @@ export default function DeliveryForm({
 
   // Sizing helper
   const getSizesForType = (itemType: UniformType): string[] => {
-    if (itemType === 'Botina') {
-      return ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44'];
-    }
     return ['PP', 'P', 'M', 'G', 'GG', 'EG', 'EXG'];
   };
 
   const handleItemTypeChange = (itemType: UniformType) => {
     setAddItemType(itemType);
-    if (itemType === 'Botina') {
-      setAddSize('40');
-    } else {
-      setAddSize('M');
-    }
+    setAddSize('M');
     setLogError('');
     setLogSuccess('');
   };
@@ -175,19 +161,6 @@ export default function DeliveryForm({
       return;
     }
 
-    // Business Rule checks: Probation implies only USADO (except for Estagiários)
-    if (forcesUsedUniform && addCondition === 'Novo') {
-      setLogError(`Regra Bloqueada: O colaborador ${selectedEmployee.nome} está no Período de Experiência (menor que 90 dias) e deve obrigatoriamente receber fardamento USADO.`);
-      return;
-    }
-
-    // Stock check
-    const availableQty = getStockQty(addItemType, sizeUpper, addCondition, addGender);
-    if (!isRetroactive && availableQty < requestedQty) {
-      setLogError(`Estoque insuficiente! Você tentou entregar ${requestedQty} peças, mas há apenas ${availableQty} peças disponíveis em estoque para ${addItemType} (${addGender === 'Masculino' ? 'Masc' : 'Fem'} / ${sizeUpper} - ${addCondition}).`);
-      return;
-    }
-
     // Process Transaction immediately
     try {
       // 1. Discount stock (only if NOT retroactive)
@@ -200,7 +173,7 @@ export default function DeliveryForm({
               s.tamanho.toUpperCase() === sizeUpper &&
               s.condicao === addCondition
             ) {
-              return { ...s, quantidade: Math.max(0, s.quantidade - requestedQty) };
+              return { ...s, quantidade: s.quantidade - requestedQty };
             }
             return s;
           })
@@ -431,7 +404,6 @@ export default function DeliveryForm({
                     <option value="Bermuda">Bermuda</option>
                     <option value="Calça">Calça</option>
                     <option value="Camiseta Polo">Camiseta Polo</option>
-                    <option value="Botina">Botina</option>
                   </select>
                 </div>
 
@@ -639,28 +611,12 @@ export default function DeliveryForm({
 
             <div className="space-y-3.5 text-xs leading-relaxed text-slate-400">
               <div className="flex gap-2.5 items-start">
-                <div className={`h-4.5 w-4.5 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-mono font-bold ${
-                  selectedEmployee && forcesUsedUniform
-                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                }`}>
+                <div className="h-4.5 w-4.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 mt-0.5 text-[9px] font-mono font-bold">
                   1
                 </div>
                 <div>
-                  <span className="text-white block font-semibold">Período de Experiência (3 meses)</span>
-                  {selectedEmployee && isIntern ? (
-                    <span className="text-teal-400 bg-teal-500/10 px-1.5 py-0.5 rounded font-mono font-bold block mt-1">
-                      Isento (Estagiário): Elegível para uniformes novos!
-                    </span>
-                  ) : selectedEmployee && forcesUsedUniform ? (
-                    <span className="text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded font-mono font-bold block mt-1">
-                      Ativo para {selectedEmployee.nome}. Somente entrega Usados!
-                    </span>
-                  ) : selectedEmployee ? (
-                    <span>Colaborador já ultrapassou o período de 3 meses. Habilitado para uniformes novos!</span>
-                  ) : (
-                    <span>Verificação do tempo de contratação para liberação do kit novo.</span>
-                  )}
+                  <span className="text-white block font-semibold">Regra de Experiência e Uniforme</span>
+                  <span>A restrição de fardamento "Novo" ou "Usado" agora é gerida manualmente pela operação. Você pode entregar qualquer condição.</span>
                 </div>
               </div>
 
