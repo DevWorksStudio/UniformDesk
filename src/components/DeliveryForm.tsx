@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Employee, StockItem, UniformType, UniformCondition, Delivery, StockMovement, UniformGender } from '../types';
+import { Employee, UniformType, UniformCondition, Delivery, UniformGender } from '../types';
 import { Cpu, Package, HelpCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface DeliveryFormProps {
   employees: Employee[];
-  stock: StockItem[];
-  setStock: React.Dispatch<React.SetStateAction<StockItem[]>>;
   deliveries: Delivery[];
   setDeliveries: React.Dispatch<React.SetStateAction<Delivery[]>>;
-  setMovements?: React.Dispatch<React.SetStateAction<StockMovement[]>>;
   currentSimulatedDate: string;
   onSuccess: (msg: string) => void;
   preselectedEmployeeId?: string;
@@ -16,11 +13,8 @@ interface DeliveryFormProps {
 
 export default function DeliveryForm({
   employees,
-  stock,
-  setStock,
   deliveries,
   setDeliveries,
-  setMovements,
   currentSimulatedDate,
   onSuccess,
   preselectedEmployeeId,
@@ -30,7 +24,6 @@ export default function DeliveryForm({
   const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
   const [logError, setLogError] = useState<string>('');
   const [logSuccess, setLogSuccess] = useState<string>('');
-  const [isRetroactive, setIsRetroactive] = useState<boolean>(false);
 
   // Direct delivery state inputs
   const [addItemType, setAddItemType] = useState<UniformType>('Camiseta');
@@ -98,18 +91,6 @@ export default function DeliveryForm({
     }
   }, [selectedEmpId]);
 
-  // Helper to query live stock balance
-  const getStockQty = (type: UniformType, size: string, condition: UniformCondition, gender: UniformGender): number => {
-    const item = stock.find(
-      (s) =>
-        s.itemType === type &&
-        s.genero === gender &&
-        s.tamanho.toUpperCase() === size.trim().toUpperCase() &&
-        s.condicao === condition
-    );
-    return item ? item.quantidade : 0;
-  };
-
   // Sizing helper
   const getSizesForType = (itemType: UniformType): string[] => {
     return ['PP', 'P', 'M', 'G', 'GG', 'EG', 'EXG'];
@@ -163,24 +144,7 @@ export default function DeliveryForm({
 
     // Process Transaction immediately
     try {
-      // 1. Discount stock (only if NOT retroactive)
-      if (!isRetroactive) {
-        setStock((prevStock) =>
-          prevStock.map((s) => {
-            if (
-              s.itemType === addItemType &&
-              s.genero === addGender &&
-              s.tamanho.toUpperCase() === sizeUpper &&
-              s.condicao === addCondition
-            ) {
-              return { ...s, quantidade: s.quantidade - requestedQty };
-            }
-            return s;
-          })
-        );
-      }
-
-      // 2. Add Delivery Entry
+      // 1. Add Delivery Entry
       const newDelivery: Delivery = {
         id: `d-${Date.now()}-${addItemType}-${Math.random().toString(36).substring(2, 6)}`,
         funcionarioId: selectedEmpId,
@@ -189,34 +153,14 @@ export default function DeliveryForm({
         condicao: addCondition,
         genero: addGender,
         dataEntrega: customDeliveryDate || currentSimulatedDate,
-        retroativa: isRetroactive,
+        retroativa: false, // Legacy field, keeping value as false
         quantidade: requestedQty,
       };
 
       setDeliveries((prevDelivs) => [...prevDelivs, newDelivery]);
 
-      // 3. Register Stock Movement Log
-      if (setMovements) {
-        const movementLog: StockMovement = {
-          id: `move-${Date.now()}-${addItemType}-${Math.random().toString(36).substring(2, 6)}`,
-          itemType: addItemType,
-          tamanho: sizeUpper,
-          condicao: addCondition,
-          genero: addGender,
-          tipoMovimentacao: 'Saída por Entrega',
-          quantidade: isRetroactive ? 0 : -requestedQty,
-          motivoDescricao: isRetroactive
-            ? `Carga Inicial / Entrega Retroativa (Instantânea) | Colaborador: ${selectedEmployee.nome} (CPF: ${selectedEmployee.cpf}) | Setor: ${selectedEmployee.setor} | Qtd: ${requestedQty}`
-            : `Entrega de fardamento direta ao colaborador: ${selectedEmployee.nome} (CPF: ${selectedEmployee.cpf}) | Setor: ${selectedEmployee.setor} | Qtd: ${requestedQty}`,
-          dataMovimentacao: customDeliveryDate || currentSimulatedDate
-        };
-        setMovements((prev) => [movementLog, ...prev]);
-      }
-
       const summaryText = `${requestedQty}x ${addItemType} (${addGender === 'Masculino' ? 'Masc' : 'Fem'} / ${sizeUpper} - ${addCondition})`;
-      const successMsg = isRetroactive
-        ? `Entrega Retroativa registrada com sucesso! Vinculou-se a posse de [${summaryText}] ao colaborador ${selectedEmployee.nome} sem alterar o estoque.`
-        : `Fardamento entregue com sucesso! Foi registrada a saída e baixa automática de: [${summaryText}] para o colaborador ${selectedEmployee.nome}.`;
+      const successMsg = `Fardamento entregue com sucesso! Foi registrado o vínculo de: [${summaryText}] para o colaborador ${selectedEmployee.nome}.`;
       
       setLogSuccess(successMsg);
       onSuccess(successMsg);
@@ -236,7 +180,7 @@ export default function DeliveryForm({
           Registrar Entrega de Uniforme (Direta)
         </h2>
         <p className="text-sm text-slate-400">
-          Selecione o colaborador, especifique a peça desejada e confirme para lançar imediatamente a entrega e descontar do estoque disponível.
+          Selecione o colaborador, especifique a peça desejada e confirme para lançar imediatamente a posse do uniforme.
         </p>
       </div>
 
@@ -245,7 +189,7 @@ export default function DeliveryForm({
         <form onSubmit={handleSubmit} className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-md space-y-6">
           <h4 className="text-sm font-bold text-slate-300 font-mono border-b border-slate-800 pb-3 flex items-center gap-2">
             <Package className="h-4.5 w-4.5 text-indigo-400" />
-            BAIXA DE ESTOQUE E ENTREGA DIRETA DE UNIFORME
+            VINCULAR FARDAMENTO AO COLABORADOR
           </h4>
 
           {/* Employee Selection */}
@@ -487,77 +431,6 @@ export default function DeliveryForm({
                     className="bg-slate-900 border border-indigo-500/20 hover:border-indigo-500/40 rounded-lg py-2.5 px-4 text-white text-sm font-bold focus:outline-none focus:border-indigo-500 w-full cursor-pointer font-sans"
                   />
                 </div>
-
-                {/* Stock Info Visual Badge */}
-                <div className="flex flex-col gap-1.5 font-sans">
-                  <span className="text-[10px] text-slate-400 uppercase font-sans">Estoque Físico Disponível</span>
-                  <div className="py-2.5 px-4 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between h-[45px]">
-                    {isRetroactive ? (
-                      <span className="text-[11px] font-bold font-mono text-indigo-400 flex items-center gap-1">
-                        <span className="h-1 w-1 rounded-full bg-indigo-400 animate-pulse"></span>
-                        Bypass (Retroativo)
-                      </span>
-                    ) : (
-                      (() => {
-                        const avail = getStockQty(addItemType, addSize, addCondition, addGender);
-                        return (
-                          <>
-                            <span className="text-[10px] text-slate-500">Saldo:</span>
-                            <span
-                              className={`text-xs font-bold font-mono flex items-center gap-1.5 ${
-                                avail <= 0
-                                  ? 'text-rose-400 animate-pulse'
-                                  : avail <= 2
-                                  ? 'text-amber-500'
-                                  : 'text-emerald-400'
-                              }`}
-                            >
-                              <span className={`h-1.5 w-1.5 rounded-full ${
-                                avail <= 0 ? 'bg-rose-455' : avail <= 2 ? 'bg-amber-500' : 'bg-emerald-400'
-                              }`} />
-                              {avail} peças
-                            </span>
-                          </>
-                        );
-                      })()
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Retroactive Delivery Option inside current pieces edit */}
-              <div className="p-4 rounded-xl border border-dashed border-indigo-500/20 bg-indigo-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in" id="retroactive-toggle-container">
-                <div className="space-y-1">
-                  <label className="flex items-center gap-1.5 text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">
-                    <span className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse"></span>
-                    Estoque Retroativo (Sem Vazão)
-                  </label>
-                  <p className="text-xs text-slate-400 max-w-xl leading-relaxed">
-                    Selecione esta opção se o colaborador já estiver portando estas {addQty} farda(s) de antemão e quer registrar apenas formalidade, sem baixar do saldo de estoque do almoxarifado.
-                  </p>
-                </div>
-                <div className="shrink-0 flex items-center gap-2">
-                  <span className="text-xs font-mono font-bold text-slate-400">
-                    {isRetroactive ? 'ATIVADO' : 'DESATIVADO'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsRetroactive(!isRetroactive);
-                      setLogError('');
-                      setLogSuccess('');
-                    }}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      isRetroactive ? 'bg-indigo-600' : 'bg-slate-700'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                        isRetroactive ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                </div>
               </div>
             </div>
           )}
@@ -587,7 +460,7 @@ export default function DeliveryForm({
           <div className="flex items-center justify-between border-t border-slate-800 pt-5">
             <div className="flex items-center gap-1.5 text-xs text-slate-450 font-mono">
               <HelpCircle className="h-4 w-4 text-slate-500" />
-              <span>Sua ação dará baixa física do item no estoque do almoxarifado em lote único.</span>
+              <span>Sua ação vinculará a posse e acionará os contadores de validade de troca.</span>
             </div>
 
             <button
@@ -664,11 +537,6 @@ export default function DeliveryForm({
                         <div className="flex justify-between text-[10px] text-slate-400">
                           <span>
                             Data: {new Date(item.dataEntrega + 'T00:00:00').toLocaleDateString('pt-BR')}
-                            {item.retroativa && (
-                              <span className="ml-1 px-1 py-0.5 rounded text-[8px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/15 uppercase font-bold text-[7.5px] font-sans">
-                                Retroativo
-                              </span>
-                            )}
                           </span>
                           <span>ID: {item.id.substring(0, 10)}</span>
                         </div>

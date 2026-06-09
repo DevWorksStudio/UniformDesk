@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Employee, Delivery, StockItem, StockMovement, UniformType, UniformGender, UniformCondition } from '../types';
+import { Employee, Delivery } from '../types';
 import { Users, UserPlus, Calendar, ShieldAlert, Award, Zap, Trash2, Edit3, Plus, Check, X, FolderEdit } from 'lucide-react';
 
 interface EmployeePanelProps {
@@ -10,9 +10,6 @@ interface EmployeePanelProps {
   setSectors: React.Dispatch<React.SetStateAction<string[]>>;
   deliveries: Delivery[];
   setDeliveries: React.Dispatch<React.SetStateAction<Delivery[]>>;
-  stock: StockItem[];
-  setStock: React.Dispatch<React.SetStateAction<StockItem[]>>;
-  setMovements: React.Dispatch<React.SetStateAction<StockMovement[]>>;
 }
 
 export default function EmployeePanel({
@@ -23,9 +20,6 @@ export default function EmployeePanel({
   setSectors,
   deliveries,
   setDeliveries,
-  stock,
-  setStock,
-  setMovements,
 }: EmployeePanelProps) {
   // Form states
   const [newNome, setNewNome] = useState('');
@@ -54,22 +48,6 @@ export default function EmployeePanel({
     actionType: 'delete_employee' | 'delete_sector';
     targetId: string;
     targetName: string;
-  } | null>(null);
-
-  const [demissionModal, setDemissionModal] = useState<{
-    show: boolean;
-    employeeId: string;
-    employeeName: string;
-    possessions: {
-      deliveryId: string;
-      itemType: UniformType;
-      tamanho: string;
-      condicao: UniformCondition;
-      genero: UniformGender;
-      dataEntrega: string;
-      selectedDecision: 'Usado' | 'Novo' | 'Descarte';
-      quantidade: number;
-    }[];
   } | null>(null);
 
   const [customAlert, setCustomAlert] = useState<{
@@ -196,145 +174,16 @@ export default function EmployeePanel({
     }
   };
 
-  // Delete collaborator handler with safety validation and return to stock orchestration
+  // Delete collaborator handler with safety validation
   const handleRemoveEmployee = (empId: string, name: string) => {
-    // 1. Gather all deliveries currently in possession
-    const empDeliveries = deliveries.filter((d) => d.funcionarioId === empId);
-    
-    // Group by itemType to get the most recent delivery of each item type.
-    const latestByType: Record<string, Delivery> = {};
-    empDeliveries.forEach((d) => {
-      const activeLatest = latestByType[d.itemType];
-      if (!activeLatest || new Date(d.dataEntrega).getTime() > new Date(activeLatest.dataEntrega).getTime()) {
-        latestByType[d.itemType] = d;
-      }
-    });
-
-    const possessions = Object.values(latestByType).map((d) => ({
-      deliveryId: d.id,
-      itemType: d.itemType,
-      tamanho: d.tamanho,
-      condicao: d.condicao,
-      genero: d.genero,
-      dataEntrega: d.dataEntrega,
-      selectedDecision: 'Usado' as 'Usado' | 'Novo' | 'Descarte', // Default: Retornar como Usada
-      quantidade: d.quantidade || 1,
-    }));
-
-    setDemissionModal({
+    setCustomConfirm({
       show: true,
-      employeeId: empId,
-      employeeName: name,
-      possessions,
+      title: 'Desligar Colaborador',
+      message: `Tem certeza que deseja inativar o colaborador ${name}? Ele deixará de constar nas planilhas ativas.`,
+      actionType: 'delete_employee',
+      targetId: empId,
+      targetName: name,
     });
-  };
-
-  // Processes employee dismissal, stock recovery, and movements in a consolidated action
-  const executeEmployeeDismissal = () => {
-    if (!demissionModal) return;
-
-    const { employeeId, employeeName, possessions } = demissionModal;
-
-    // 1. Start updating stock based on selections
-    let updatedStock = [...stock];
-    const newMovementsList: any[] = [];
-
-    possessions.forEach((p) => {
-      const { itemType, tamanho, genero, selectedDecision, quantidade } = p;
-      const qty = quantidade || 1;
-
-      // If they decided to return to stock (either as Usado or Novo)
-      if (selectedDecision === 'Usado' || selectedDecision === 'Novo') {
-        const returnCondition: UniformCondition = selectedDecision;
-
-        // Find match in stock
-        const stockIndex = updatedStock.findIndex(
-          (s) =>
-            s.itemType === itemType &&
-            s.tamanho.trim().toUpperCase() === tamanho.trim().toUpperCase() &&
-            s.genero === genero &&
-            s.condicao === returnCondition
-        );
-
-        if (stockIndex !== -1) {
-          // Increment quantity
-          updatedStock[stockIndex] = {
-            ...updatedStock[stockIndex],
-            quantidade: updatedStock[stockIndex].quantidade + qty,
-          };
-        } else {
-          // If the stock entry does not exist, create a new one
-          updatedStock.push({
-            id: Math.random().toString(36).substring(2, 11),
-            itemType,
-            tamanho,
-            genero,
-            condicao: returnCondition,
-            quantidade: qty,
-          });
-        }
-
-        // Add movement log
-        newMovementsList.push({
-          id: Math.random().toString(36).substring(2, 11),
-          itemType,
-          tamanho,
-          condicao: returnCondition,
-          genero,
-          tipoMovimentacao: 'Entrada por Devolução',
-          quantidade: qty,
-          dataMovimentacao: currentSimulatedDate,
-          motivoDescricao: `Devolução por desligamento: ${employeeName}. Qtd: ${qty}. Origem: entrega de ${new Date(p.dataEntrega + 'T00:00:00').toLocaleDateString('pt-BR')}`,
-        });
-      } else {
-        // Log as discard
-        newMovementsList.push({
-          id: Math.random().toString(36).substring(2, 11),
-          itemType,
-          tamanho,
-          condicao: p.condicao,
-          genero,
-          tipoMovimentacao: 'Saída por Descarte',
-          quantidade: -qty,
-          dataMovimentacao: currentSimulatedDate,
-          motivoDescricao: `Descarte por desligamento: ${employeeName}. Qtd: ${qty}. Peça descartada sem retorno ao estoque.`,
-        });
-      }
-    });
-
-    // 2. Perform soft-delete update of the employee
-    setEmployees((prev) =>
-      prev.map((emp) => {
-        if (emp.id === employeeId) {
-          return {
-            ...emp,
-            deleted: true,
-            dataDemissao: currentSimulatedDate, // Mark as dismissed today
-          };
-        }
-        return emp;
-      })
-    );
-
-    // 3. Update stock and movements
-    setStock(updatedStock);
-    if (newMovementsList.length > 0) {
-      setMovements((prev) => [...newMovementsList, ...prev]);
-    }
-
-    setLogMsg(
-      `Sucesso: Colaborador "${employeeName}" desligado. ${
-        possessions.length > 0
-          ? `${possessions.length} uniformes devolvidos/processados no estoque.`
-          : 'Nenhuma peça estava em posse dele.'
-      }`
-    );
-
-    if (editingId === employeeId) {
-      resetForm();
-    }
-
-    setDemissionModal(null);
   };
 
   const executeConfirmedAction = () => {
@@ -342,8 +191,8 @@ export default function EmployeePanel({
     const { actionType, targetId, targetName } = customConfirm;
 
     if (actionType === 'delete_employee') {
-      setEmployees((prev) => prev.filter((emp) => emp.id !== targetId));
-      setLogMsg(`Sucesso: Colaborador "${targetName}" removido do sistema.`);
+      setEmployees((prev) => prev.map(emp => emp.id === targetId ? { ...emp, deleted: true, dataDemissao: currentSimulatedDate } : emp));
+      setLogMsg(`Sucesso: Colaborador "${targetName}" desligado e inativado no sistema.`);
       if (editingId === targetId) {
         resetForm();
       }
@@ -872,120 +721,6 @@ export default function EmployeePanel({
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold font-sans rounded-lg shadow-lg shadow-indigo-600/10 cursor-pointer transition-all hover:scale-[1.02]"
               >
                 Entendido
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Demission Modal Overlay (Smart return-to-stock exclusion logic) */}
-      {demissionModal && demissionModal.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in" id="demission-modal-overlay">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-2xl space-y-5">
-            <div className="flex items-center gap-3 text-amber-500">
-              <ShieldAlert className="h-6 w-6 shrink-0" />
-              <h3 className="text-lg font-bold text-white font-sans">Confirmar Desligamento de Colaborador</h3>
-            </div>
-
-            <p className="text-sm text-slate-300 leading-relaxed font-sans">
-              Você está prestes a desligar o colaborador <span className="font-bold text-white text-base font-mono">{demissionModal.employeeName}</span> do sistema de controle.
-              Por favor, defina abaixo o destino de retorno das peças de uniforme sob posse dele correspondentes aos fardamentos entregues.
-            </p>
-
-            <div className="space-y-3">
-              <label className="block text-[11px] font-mono font-bold text-slate-500 uppercase tracking-widest border-b border-slate-850 pb-1">
-                Uniforme em Posse Ativo ({demissionModal.possessions.length})
-              </label>
-
-              {demissionModal.possessions.length === 0 ? (
-                <div className="p-4 rounded-lg bg-slate-955/50 border border-slate-800 text-center text-xs font-mono text-slate-500 italic">
-                  Nenhuma peça de uniforme em posse cadastrada. O colaborador será inativado livre de fardamentos.
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                  {demissionModal.possessions.map((p, index) => (
-                    <div key={p.deliveryId} className="p-3 bg-slate-950/40 rounded-xl border border-slate-850 space-y-2">
-                      <div className="flex justify-between items-start text-xs font-mono">
-                        <div>
-                          <span className="font-bold text-indigo-400 text-sm block">
-                            {p.itemType} {p.quantidade && p.quantidade > 1 ? `(${p.quantidade}x)` : ''}
-                          </span>
-                          <span className="text-[10px] text-slate-400 mt-0.5 block">
-                            Grade: {p.genero} • Tamanho {p.tamanho} • Original {p.condicao}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-slate-500 bg-slate-900 border border-slate-850 px-2 py-0.5 rounded-full">
-                          Entregue em: {new Date(p.dataEntrega + 'T00:00:00').toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-
-                      <div className="flex bg-slate-950 rounded-lg border border-slate-850 p-0.5 mt-2 overflow-hidden shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newPos = [...demissionModal.possessions];
-                            newPos[index] = { ...newPos[index], selectedDecision: 'Usado' };
-                            setDemissionModal({ ...demissionModal, possessions: newPos });
-                          }}
-                          className={`flex-1 text-center py-1.5 px-2 rounded-md text-[10px] font-sans font-medium transition cursor-pointer ${
-                            p.selectedDecision === 'Usado'
-                              ? 'bg-slate-850 text-indigo-400 border border-slate-800/80 font-bold shadow-sm'
-                              : 'bg-transparent text-slate-400 border border-transparent hover:text-slate-200'
-                          }`}
-                        >
-                          Devolver Usada
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newPos = [...demissionModal.possessions];
-                            newPos[index] = { ...newPos[index], selectedDecision: 'Novo' };
-                            setDemissionModal({ ...demissionModal, possessions: newPos });
-                          }}
-                          className={`flex-1 text-center py-1.5 px-2 rounded-md text-[10px] font-sans font-medium transition cursor-pointer ${
-                            p.selectedDecision === 'Novo'
-                              ? 'bg-slate-850 text-teal-400 border border-slate-800/80 font-bold shadow-sm'
-                              : 'bg-transparent text-slate-400 border border-transparent hover:text-slate-200'
-                          }`}
-                        >
-                          Devolver Nova
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const newPos = [...demissionModal.possessions];
-                            newPos[index] = { ...newPos[index], selectedDecision: 'Descarte' };
-                            setDemissionModal({ ...demissionModal, possessions: newPos });
-                          }}
-                          className={`flex-1 text-center py-1.5 px-2 rounded-md text-[10px] font-sans font-medium transition cursor-pointer ${
-                            p.selectedDecision === 'Descarte'
-                              ? 'bg-rose-950/40 text-rose-400 border border-rose-900/40 font-bold shadow-sm'
-                              : 'bg-transparent text-slate-300 border border-transparent hover:text-slate-200'
-                          }`}
-                        >
-                          Descarte / Perda
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-855">
-              <button
-                type="button"
-                onClick={() => setDemissionModal(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-755 text-slate-350 text-xs font-semibold font-sans rounded-lg border border-slate-700 hover:border-slate-500 cursor-pointer transition-all"
-              >
-                Voltar e Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={executeEmployeeDismissal}
-                className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold font-sans rounded-lg shadow-lg shadow-amber-600/10 cursor-pointer transition-all hover:scale-[1.02]"
-              >
-                Confirmar Desligamento
               </button>
             </div>
           </div>

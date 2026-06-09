@@ -11,8 +11,6 @@ export default function Sidebar({ activeTab, setActiveTab, alertsCount }: Sideba
   const totalAlerts = alertsCount.efectivacion + alertsCount.renewal;
 
   const menuItems = [
-    { id: 'dashboard', name: 'Dashboard & Estoque', icon: LayoutDashboard },
-    { id: 'inventory_manager', name: 'Gestão de Inventário', icon: Database }, // reuse Database icon or similar standard
     { id: 'employees', name: 'Planejamento / Planilha', icon: Users },
     { id: 'delivery', name: 'Registrar Entrega', icon: Cpu },
     { id: 'alerts', name: 'Central de Alertas', icon: ShieldAlert, badge: totalAlerts },

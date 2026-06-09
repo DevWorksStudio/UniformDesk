@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
-import StockPanel from './components/StockPanel';
-import InventoryManager from './components/InventoryManager';
 import EmployeePanel from './components/EmployeePanel';
 import DeliveryForm from './components/DeliveryForm';
 import AlertsPanel from './components/AlertsPanel';
@@ -9,20 +7,16 @@ import EmployeeSpreadsheet from './components/EmployeeSpreadsheet';
 import TechnicalDossier from './components/TechnicalDossier';
 import BackupPanel from './components/BackupPanel';
 
-import { INITIAL_STOCK, INITIAL_EMPLOYEES, INITIAL_DELIVERIES } from './data';
-import { StockItem, Employee, Delivery, StockMovement } from './types';
+import { INITIAL_EMPLOYEES, INITIAL_DELIVERIES } from './data';
+import { Employee, Delivery } from './types';
 import { Calendar, AlertTriangle, ShieldAlert, BadgeInfo, Play, Cpu, RotateCcw } from 'lucide-react';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>('alerts');
   const [employeesSubTab, setEmployeesSubTab] = useState<'spreadsheet' | 'manage'>('spreadsheet');
   const [preselectedEmpId, setPreselectedEmpId] = useState<string>('');
 
   // Simulated DB State
-  const [stock, setStock] = useState<StockItem[]>(() => {
-    const saved = localStorage.getItem('db_stock');
-    return saved ? JSON.parse(saved) : INITIAL_STOCK;
-  });
   const [employees, setEmployees] = useState<Employee[]>(() => {
     const saved = localStorage.getItem('db_employees');
     return saved ? JSON.parse(saved) : INITIAL_EMPLOYEES;
@@ -35,38 +29,6 @@ export default function App() {
     const saved = localStorage.getItem('db_sectors');
     return saved ? JSON.parse(saved) : ['Logística', 'Produção', 'Manutenção', 'Expedição', 'Segurança', 'Administrativo'];
   });
-  const [movements, setMovements] = useState<StockMovement[]>(() => {
-    const saved = localStorage.getItem('db_stock_movements');
-    // Pre-populate with dummy movement log from initial deliveries history to make audit trail intuitive on load
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.map((m: any) => ({
-            ...m,
-            tipoMovimentacao: m.tipoMovimentacao || m.tipo || 'Ajuste de Inventário',
-            motivoDescricao: m.motivoDescricao || m.descricao || 'Lançamento manual de fardamento.',
-            dataMovimentacao: m.dataMovimentacao || m.dataRegistro || m.data || '2026-05-22'
-          }));
-        }
-      } catch (e) {
-        console.error("Error parsing/loading movements", e);
-      }
-    }
-    
-    const initialMoves: StockMovement[] = INITIAL_DELIVERIES.map((d, index) => ({
-      id: `init-move-${index}`,
-      itemType: d.itemType,
-      tamanho: d.tamanho,
-      condicao: d.condicao,
-      genero: d.genero,
-      tipoMovimentacao: 'Saída por Entrega',
-      quantidade: -1,
-      motivoDescricao: `Fardamento automático do colaborador ID: ${d.funcionarioId}`,
-      dataMovimentacao: d.dataEntrega
-    }));
-    return initialMoves;
-  });
 
   // Simulated Time Machine Date
   const [currentSimulatedDate, setCurrentSimulatedDate] = useState<string>(() => {
@@ -76,38 +38,18 @@ export default function App() {
 
   // Initialize DB Values
   const handleResetData = () => {
-    const initialMoves = INITIAL_DELIVERIES.map((d, index) => ({
-      id: `init-move-${index}`,
-      itemType: d.itemType,
-      tamanho: d.tamanho,
-      condicao: d.condicao,
-      genero: d.genero,
-      tipoMovimentacao: 'Saída por Entrega' as const,
-      quantidade: -1,
-      motivoDescricao: `Fardamento automático do colaborador ID: ${d.funcionarioId}`,
-      dataMovimentacao: d.dataEntrega
-    }));
-
-    setStock(JSON.parse(JSON.stringify(INITIAL_STOCK)));
     setEmployees(JSON.parse(JSON.stringify(INITIAL_EMPLOYEES)));
     setDeliveries(JSON.parse(JSON.stringify(INITIAL_DELIVERIES)));
     setSectors(['Logística', 'Produção', 'Manutenção', 'Expedição', 'Segurança', 'Administrativo']);
-    setMovements(initialMoves);
     setCurrentSimulatedDate('2026-05-22');
 
-    localStorage.setItem('db_stock', JSON.stringify(INITIAL_STOCK));
     localStorage.setItem('db_employees', JSON.stringify(INITIAL_EMPLOYEES));
     localStorage.setItem('db_deliveries', JSON.stringify(INITIAL_DELIVERIES));
     localStorage.setItem('db_sectors', JSON.stringify(['Logística', 'Produção', 'Manutenção', 'Expedição', 'Segurança', 'Administrativo']));
-    localStorage.setItem('db_stock_movements', JSON.stringify(initialMoves));
     localStorage.setItem('db_simulated_date', '2026-05-22');
 
     setGlobalLog('Estado do banco de dados restaurado aos padrões originais do escopo.');
   };
-
-  useEffect(() => {
-    localStorage.setItem('db_stock', JSON.stringify(stock));
-  }, [stock]);
 
   useEffect(() => {
     localStorage.setItem('db_employees', JSON.stringify(employees));
@@ -120,10 +62,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('db_sectors', JSON.stringify(sectors));
   }, [sectors]);
-
-  useEffect(() => {
-    localStorage.setItem('db_stock_movements', JSON.stringify(movements));
-  }, [movements]);
 
   useEffect(() => {
     localStorage.setItem('db_simulated_date', currentSimulatedDate);
@@ -262,21 +200,6 @@ export default function App() {
 
         {/* Core Screen Router */}
         <main className="flex-1 overflow-y-auto p-8 max-w-7xl w-full mx-auto space-y-8">
-          {activeTab === 'dashboard' && (
-            <StockPanel stock={stock} setStock={setStock} onReset={handleResetData} />
-          )}
-
-          {activeTab === 'inventory_manager' && (
-            <InventoryManager
-              stock={stock}
-              setStock={setStock}
-              movements={movements}
-              setMovements={setMovements}
-              currentSimulatedDate={currentSimulatedDate}
-              onLogMessage={(msg) => setGlobalLog(msg)}
-            />
-          )}
-
           {activeTab === 'employees' && (
             <div className="space-y-6">
               {/* Inner Sub tabs for Employees */}
@@ -323,9 +246,6 @@ export default function App() {
                   setSectors={setSectors}
                   deliveries={deliveries}
                   setDeliveries={setDeliveries}
-                  stock={stock}
-                  setStock={setStock}
-                  setMovements={setMovements}
                 />
               )}
             </div>
@@ -334,11 +254,8 @@ export default function App() {
           {activeTab === 'delivery' && (
             <DeliveryForm
               employees={employees}
-              stock={stock}
-              setStock={setStock}
               deliveries={deliveries}
               setDeliveries={setDeliveries}
-              setMovements={setMovements}
               currentSimulatedDate={currentSimulatedDate}
               preselectedEmployeeId={preselectedEmpId}
               onSuccess={(msg) => {
@@ -353,8 +270,6 @@ export default function App() {
             <AlertsPanel
               employees={employees}
               deliveries={deliveries}
-              stock={stock}
-              setStock={setStock}
               setDeliveries={setDeliveries}
               currentSimulatedDate={currentSimulatedDate}
               onRefreshStats={() => setGlobalLog('Transação registrada. Alertas reavaliados.')}
@@ -376,8 +291,6 @@ export default function App() {
               setSectors={setSectors}
               currentSimulatedDate={currentSimulatedDate}
               onLogMessage={(msg) => setGlobalLog(msg)}
-              stock={stock}
-              setStock={setStock}
             />
           )}
 
@@ -385,7 +298,6 @@ export default function App() {
             <TechnicalDossier
               employees={employees}
               deliveries={deliveries}
-              stock={stock}
               currentSimulatedDate={currentSimulatedDate}
             />
           )}

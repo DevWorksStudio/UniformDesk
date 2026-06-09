@@ -1,12 +1,10 @@
 import React from 'react';
-import { Employee, Delivery, StockItem, UniformGender } from '../types';
+import { Employee, Delivery, UniformGender } from '../types';
 import { ShieldAlert, Award, Calendar, RotateCcw, Check, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 
 interface AlertsPanelProps {
   employees: Employee[];
   deliveries: Delivery[];
-  stock: StockItem[];
-  setStock: React.Dispatch<React.SetStateAction<StockItem[]>>;
   setDeliveries: React.Dispatch<React.SetStateAction<Delivery[]>>;
   currentSimulatedDate: string;
   onRefreshStats: () => void;
@@ -16,8 +14,6 @@ interface AlertsPanelProps {
 export default function AlertsPanel({
   employees,
   deliveries,
-  stock,
-  setStock,
   setDeliveries,
   currentSimulatedDate,
   onRefreshStats,
@@ -116,44 +112,16 @@ export default function AlertsPanel({
     });
   });
 
-  // Action: Complete Probation Efetivacao Delivery (give a Camiseta M & Calça M as default, or we find available in stock)
+  // Action: Complete Probation Efetivacao Delivery (give a Camiseta M & Calça M as default)
   const handleResolveEfetivacao = (empId: string) => {
     const emp = employees.find((e) => e.id === empId);
     if (!emp) return;
 
-    // Check sizes stock (Calça is M letter-based)
+    // Default sizes for auto-resolve
     const neededSample = [
       { type: 'Camiseta' as const, size: 'M', gender: 'Masculino' as const },
       { type: 'Calça' as const, size: 'M', gender: 'Masculino' as const },
     ];
-
-    // Check and deduct stock
-    let allAvailable = true;
-    neededSample.forEach((sample) => {
-      const sItem = stock.find((s) => s.itemType === sample.type && s.tamanho === sample.size && s.genero === sample.gender && s.condicao === 'Novo');
-      if (!sItem || sItem.quantidade <= 0) {
-        allAvailable = false;
-      }
-    });
-
-    if (!allAvailable) {
-      alert(
-        'Falha na transação: Estoque insuficiente do Kit Padrão de Efetivação Novo (Camiseta M / Calça M). ' +
-          'Favor repor estoque na aba Dashboard.'
-      );
-      return;
-    }
-
-    // Deduct
-    setStock((prev) =>
-      prev.map((s) => {
-        const isMatch = neededSample.some((sample) => sample.type === s.itemType && sample.size === s.tamanho && sample.gender === s.genero && s.condicao === 'Novo');
-        if (isMatch) {
-          return { ...s, quantidade: s.quantidade - 1 };
-        }
-        return s;
-      })
-    );
 
     // Create deliveries
     const newDeliveries: Delivery[] = neededSample.map((sample) => ({
@@ -173,26 +141,6 @@ export default function AlertsPanel({
 
   // Action: Renew specific individual piece
   const handleResolveReplacement = (alertItem: RenewalAlert) => {
-    // Deduct stock
-    const sItem = stock.find(
-      (s) => s.itemType === alertItem.itemType && s.tamanho === alertItem.tamanho && s.genero === alertItem.genero && s.condicao === 'Novo'
-    );
-
-    if (!sItem || sItem.quantidade <= 0) {
-      window.alert(
-        `Erro: Estoque insuficiente para renovar ${alertItem.itemType} (${alertItem.tamanho} - Novo). É necessário possuir saldo no estoque.`
-      );
-      return;
-    }
-
-    setStock((prev) =>
-      prev.map((s) => {
-        if (s.id === sItem.id) {
-          return { ...s, quantidade: s.quantidade - 1 };
-        }
-        return s;
-      })
-    );
 
     // Create replacement delivery
     const renewalDelivery: Delivery = {
